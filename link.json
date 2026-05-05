@@ -1,0 +1,1 @@
+{"link":"https://okducagile.atlassian.net/issues/?jql=project%3DOKQABUG%20AND%20issuekey%3E%3DOKQABUG-31070%20AND%20issuekey%3C%3DOKQABUG-31124%20AND%20creator%3DcurrentUser()"}
