@@ -3,4 +3,3 @@ test-results/
 playwright-report/
 auth.json
 *.log
-.env

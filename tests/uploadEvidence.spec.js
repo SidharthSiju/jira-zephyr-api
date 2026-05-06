@@ -5,27 +5,71 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import FormData from 'form-data';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({
+    path: path.resolve(__dirname, '../.env')
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATHS
+// ─────────────────────────────────────────────────────────────────────────────
 
 const folderPath = process.env.TEST_DATA_PATH;
 
 const jiraBaseUrl = process.env.JIRA_BASE_URL;
+
 const jiraEmail = process.env.JIRA_EMAIL;
+
 const jiraApiToken = process.env.JIRA_API_TOKEN;
 
-const issuesFilePath = path.resolve(__dirname, '../issues.json');
+const issuesFilePath = path.resolve(
+    __dirname,
+    '../issues.json'
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────────────────────────────────────
 
 const authHeader = {
+
     Authorization:
         'Basic ' +
-        Buffer.from(`${jiraEmail}:${jiraApiToken}`).toString('base64'),
+        Buffer.from(
+            `${jiraEmail}:${jiraApiToken}`
+        ).toString('base64'),
+
     Accept: 'application/json',
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
 function loadIssues() {
+
+    if (!fs.existsSync(issuesFilePath)) {
+
+        continue;
+    }
 
     return JSON.parse(
         fs.readFileSync(issuesFilePath, 'utf8')
+    );
+}
+
+async function attachmentAlreadyExists(
+    issueKey,
+    fileName
+) {
+
+    const issue = await getIssue(issueKey);
+
+    const attachments =
+        issue.fields?.attachment || [];
+
+    return attachments.some(
+        attachment =>
+            attachment.filename === fileName
     );
 }
 
@@ -73,6 +117,7 @@ async function transitionToPass(issueKey) {
     );
 
     if (!passTransition) {
+
         throw new Error(
             `No Pass transition found for ${issueKey}`
         );
@@ -94,54 +139,82 @@ async function transitionToPass(issueKey) {
     );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TESTS
+// ─────────────────────────────────────────────────────────────────────────────
+
 test.describe('Upload evidence via API', () => {
 
-    const issues = loadIssues();
+    let issues = [];
 
-    issues.forEach(issue => {
+    // IMPORTANT:
+    // This runs AFTER previous stages complete.
+    test.beforeAll(async () => {
 
-        test(
-            `Upload evidence for ${issue.Summary}`,
-            async () => {
+        issues = loadIssues();
+    });
 
-                if (
-                    issue.testStatus === 'Not Created' ||
-                    !issue.issueKey
-                ) {
-                    test.skip();
-                    return;
-                }
+    test('Upload evidence for all issues', async () => {
+        test.setTimeout(500000);
 
-                const wordFilePath = path.join(
-                    folderPath,
-                    `${issue.Summary}.docx`
+        for (const issue of issues) {
+
+            if (
+                issue.testStatus === 'Not Created' ||
+                !issue.issueKey
+            ) {
+                console.log(
+                    `Skipping ${issue.Summary}`
                 );
 
-                if (!fs.existsSync(wordFilePath)) {
-                    throw new Error(
-                        `Missing file: ${wordFilePath}`
-                    );
-                }
+                continue;
+            }
+
+            const wordFilePath = path.join(
+                folderPath,
+                `${issue.Summary}.docx`
+            );
+
+            if (!fs.existsSync(wordFilePath)) {
+
+                continue;
+            }
+
+            const alreadyExists =
+                await attachmentAlreadyExists(
+                    issue.issueKey,
+                    fileName
+                );
+
+            if (alreadyExists) {
 
                 console.log(
-                    `Uploading attachment to ${issue.issueKey}`
+                    `${fileName} already attached to ${issue.issueKey}`
+                );
+
+            } else {
+
+                console.log(
+                    `Uploading ${fileName} to ${issue.issueKey}`
                 );
 
                 await uploadAttachment(
                     issue.issueKey,
                     wordFilePath
                 );
-
-                console.log(
-                    `Transitioning ${issue.issueKey} to Pass`
-                );
-
-                await transitionToPass(issue.issueKey);
-
-                console.log(
-                    `Completed ${issue.issueKey}`
-                );
             }
-        );
+
+            console.log(
+                `Transitioning ${issue.issueKey} to Pass`
+            );
+
+            await transitionToPass(
+                issue.issueKey
+            );
+
+            console.log(
+                `Completed ${issue.issueKey}`
+            );
+        }
     });
 });
