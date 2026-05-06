@@ -30,7 +30,7 @@ export async function retryAction({
   action,
   successCheck,
   retries = 15,
-  delay = 500,
+  delay = 2000,
   name = 'action'
 }) {
   for (let i = 0; i < retries; i++) {

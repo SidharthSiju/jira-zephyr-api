@@ -42,7 +42,8 @@ export default defineConfig({
       name: 'setup',
       testMatch: 'tests/bulkCreateIssues.spec.js',
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         testDataPath: process.env.TEST_DATA_PATH,
         outputPath: process.env.OUTPUT_PATH
       },
@@ -53,7 +54,8 @@ export default defineConfig({
       testMatch: 'tests/attachFilesParallel.spec.js',
       dependencies: ['setup'],
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         testDataPath: process.env.TEST_DATA_PATH,
         outputPath: process.env.OUTPUT_PATH
       },
@@ -63,7 +65,8 @@ export default defineConfig({
       name: 'scenarios-only',
       testMatch: 'tests/attachFilesParallel.spec.js',
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         testDataPath: process.env.TEST_DATA_PATH,
         outputPath: process.env.OUTPUT_PATH
       },
@@ -74,7 +77,8 @@ export default defineConfig({
       testMatch: 'tests/uploadEvidence.spec.js',
       dependencies: ['scenarios-only'],
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         testDataPath: process.env.TEST_DATA_PATH,
         outputPath: process.env.OUTPUT_PATH
       },
@@ -84,7 +88,20 @@ export default defineConfig({
       name: 'evidence-only',
       testMatch: 'tests/uploadEvidence.spec.js',
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+        testDataPath: process.env.TEST_DATA_PATH,
+        outputPath: process.env.OUTPUT_PATH
+      },
+    },
+
+    {
+      name: 'evidence',
+      testMatch: 'tests/uploadEvidence.spec.js',
+      dependencies: ['scenarios'],
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         testDataPath: process.env.TEST_DATA_PATH,
         outputPath: process.env.OUTPUT_PATH
       },
@@ -92,64 +109,38 @@ export default defineConfig({
 
     {
       name: 'full-process',
-      testMatch: 'tests/uploadEvidence.spec.js',
-      dependencies: ['scenarios'],
+      testMatch: 'tests/downloadCSV.spec.js',
+      dependencies: ['evidence'],
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+        testDataPath: process.env.TEST_DATA_PATH,
+        outputPath: process.env.OUTPUT_PATH
+      },
+    },
+
+    {
+      name: 'download-csv',
+      testMatch: 'tests/downloadCSV.spec.js',
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+        testDataPath: process.env.TEST_DATA_PATH,
+        outputPath: process.env.OUTPUT_PATH
+      },
+    },
+
+    {
+      name: 'download-csv-with-evidence',
+      testMatch: 'tests/downloadCSV.spec.js',
+      dependencies: ['evidence-with-scenarios'],
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         testDataPath: process.env.TEST_DATA_PATH,
         outputPath: process.env.OUTPUT_PATH
       },
     }
-
-    // {
-    //   name: 'Folder-1',
-    //   use: {
-    //     ...devices['Desktop Chrome'],
-    //     testDataPath: 'C:/Users/lenovo/Desktop/Random/randomFolder1',
-    //     outputPath: 'C:/Users/lenovo/Desktop/Random/testResults'
-    //   },
-
-    // },
-  ],
-  // ,
-
-  // {
-  //   name: 'firefox',
-  //   use: { ...devices['Desktop Firefox'] },
-  // },
-
-  // {
-  //   name: 'webkit',
-  //   use: { ...devices['Desktop Safari'] },
-  // },
-
-  /* Test against mobile viewports. */
-  // {
-  //   name: 'Mobile Chrome',
-  //   use: { ...devices['Pixel 5'] },
-  // },
-  // {
-  //   name: 'Mobile Safari',
-  //   use: { ...devices['iPhone 12'] },
-  // },
-
-  /* Test against branded browsers. */
-  // {
-  //   name: 'Microsoft Edge',
-  //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-  // },
-  // {
-  //   name: 'Google Chrome',
-  //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-  // },
-
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
-
-
+  ]
 });
 

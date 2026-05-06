@@ -25,7 +25,7 @@ export default class CreateIssuePage {
    * as the page may still be loading when this is called.
    */
   async importIssues() {
-    await this.importIssuesLocator.waitFor({ state: 'visible', timeout: 15000 });
+    await this.importIssuesLocator.waitFor({ state: 'visible', timeout: 30000 });
     await this.importIssuesLocator.click();
   }
 }
