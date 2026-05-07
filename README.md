@@ -15,13 +15,15 @@ Automates the end-to-end workflow of bulk-importing test cases from a CSV file i
 
 ## Setup
 
-### 1. Install dependencies
+### 1. CD to project directory (folder containing the tests folder)
+
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configure environment variables
+### 4. Configure environment variables
 
 Create a `.env` file in the project root (or edit the existing one):
 
@@ -29,6 +31,10 @@ Create a `.env` file in the project root (or edit the existing one):
 TEST_DATA_PATH=C:/path/to/your/test-data-folder
 OUTPUT_PATH=C:/path/to/your/results-folder
 FOLDER_NAME=your-folder-name
+JIRA_BASE_URL=https://your-domain.atlassian.net/
+JIRA_EMAIL=your-jira-email
+JIRA_API_TOKEN=your-jira-api-token
+JIRA_PROJECT_KEY=your-jira-project
 ```
 
 | Variable         | Description                                                       |
@@ -37,7 +43,7 @@ FOLDER_NAME=your-folder-name
 | `OUTPUT_PATH`    | Absolute path where the output results CSV will be saved          |
 | `FOLDER_NAME`    | Name of the folder (used for labelling in output)                 |
 
-### 3. Save browser authentication state
+### 5. Save browser authentication state
 
 Run the following command, log in to Jira in the browser that opens, then close it:
 
@@ -54,10 +60,8 @@ This saves your login session to `auth.json` so tests can reuse it without loggi
 ### Full pipeline (import → collect issues → upload evidence)
 
 ```bash
-npx playwright test --project=full-process --workers=4
+npx playwright test --project=full-process
 ```
-
-> Increasing `--workers` speeds up the parallel evidence upload step but uses more memory and CPU.
 
 ### Import CSV only
 
@@ -77,7 +81,11 @@ npx playwright test --project=scenarios-only
 npx playwright test --project=evidence-only
 ```
 
----
+### Download CSV
+
+```bash
+npx playwright test --project=download-csv
+```
 
 ## How It Works
 
@@ -103,6 +111,9 @@ The automation runs in three sequential stages:
                   → Attaches the matching .docx file
                   → Sets the issue status to Pass
                   → Writes a timestamped results CSV to OUTPUT_PATH
+[download-csv]   downloadCSV.spec.js
+                  → Downloads the test results CSV of the currently added records
+                  → Saves it into the output folder
 ```
 
 ---
@@ -114,16 +125,15 @@ jira_zephyr_3/
 ├── tests/
 │   ├── bulkCreateIssues.spec.js       # Stage 1: CSV import wizard
 │   ├── attachFilesParallel.spec.js    # Stage 2: Collect created issue links
-│   └── uploadEvidence.spec.js         # Stage 3: Attach evidence & set Pass
+│   ├── uploadEvidence.spec.js         # Stage 3: Attach evidence & set Pass
+│   └── downloadCSV.spec.js            # Stage 4: Download test results CSV 
 │
 ├── pages/
 │   ├── HomePage.js                    # Jira top nav → Apps → Zephyr Squad
 │   ├── CreateIssuePage.js             # Clicks the "Import Issues" button
 │   ├── BulkCreateSetupPage.js         # Uploads the CSV in the import wizard
 │   ├── SettingPage.js                 # Selects the target Jira project
-│   ├── MappingFieldsPage.js           # Maps CSV columns to Jira fields
-│   ├── GetCreatedIssuesPage.js        # Scrapes issue names and links from list view
-│   └── EvidenceFilePage.js            # Attaches .docx files and sets issue status
+│   └── MappingFieldsPage.js           # Maps CSV columns to Jira fields
 │
 ├── utils/
 │   └── retryHelper.js                 # Retry wrapper for flaky UI interactions
@@ -142,7 +152,7 @@ jira_zephyr_3/
 After a successful run, a timestamped CSV is written to `OUTPUT_PATH`:
 
 ```
-my-tests.csv_results_2025-04-30T10-00-00.000Z.csv
+your_csv_file_results.csv
 ```
 
 Each row contains the original CSV data plus:
@@ -156,6 +166,3 @@ Each row contains the original CSV data plus:
 - `link.json` and `issues.json` are intermediate runtime files written to the project root. They are read by the next stage in the pipeline.
 - Evidence files **must** be named exactly as the `Summary` field in the CSV, with a `.docx` extension.
 - The `auth.json` file contains sensitive session tokens — do not commit it to version control. It is already listed in `.gitignore`.
-
-
-### Comment
