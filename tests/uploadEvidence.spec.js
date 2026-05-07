@@ -56,6 +56,18 @@ function loadIssues() {
     );
 }
 
+async function getIssue(issueKey) {
+
+    const response = await axios.get(
+        `${jiraBaseUrl}/rest/api/3/issue/${issueKey}`,
+        {
+            headers: authHeader,
+        }
+    );
+
+    return response.data;
+}
+
 async function attachmentAlreadyExists(
     issueKey,
     fileName
@@ -179,29 +191,31 @@ test.describe('Upload evidence via API', () => {
                 continue;
             }
 
-            const alreadyExists =
-                await attachmentAlreadyExists(
-                    issue.issueKey,
-                    fileName
-                );
+            //  CHECKING WHETHER THE FILE EXISTS SLOWS DOWN THE PROCESS
 
-            if (alreadyExists) {
+            // const alreadyExists =
+            //     await attachmentAlreadyExists(
+            //         issue.issueKey,
+            //         wordFilePath
+            //     );
 
-                console.log(
-                    `${fileName} already attached to ${issue.issueKey}`
-                );
+            // if (alreadyExists) {
 
-            } else {
+            //     console.log(
+            //         `${wordFilePath} already attached to ${issue.issueKey}`
+            //     );
 
-                console.log(
-                    `Uploading ${fileName} to ${issue.issueKey}`
-                );
+            // } else {
 
-                await uploadAttachment(
-                    issue.issueKey,
-                    wordFilePath
-                );
-            }
+            //     console.log(
+            //         `Uploading ${wordFilePath} to ${issue.issueKey}`
+            //     );
+
+            //     await uploadAttachment(
+            //         issue.issueKey,
+            //         wordFilePath
+            //     );
+            // }
 
             console.log(
                 `Transitioning ${issue.issueKey} to Pass`
