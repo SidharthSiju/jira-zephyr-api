@@ -1,4 +1,4 @@
 {
-  "link": "https://okducagile.atlassian.net/issues/?jql=project%3DOKQABUG%20AND%20issuekey%3E%3DOKQABUG-31706%20AND%20issuekey%3C%3DOKQABUG-31711%20AND%20creator%3DcurrentUser()",
-  "createdAt": "2026-05-07T05:41:27.359Z"
+  "link": "https://okducagile.atlassian.net/issues/?jql=project%3DOKQABUG%20AND%20issuekey%3E%3DOKQABUG-31730%20AND%20issuekey%3C%3DOKQABUG-31735%20AND%20creator%3DcurrentUser()",
+  "createdAt": "2026-05-07T06:22:51.323Z"
 }

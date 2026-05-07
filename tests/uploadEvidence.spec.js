@@ -1,126 +1,125 @@
+/**
+ * uploadEvidence.api.spec.js
+ *
+ * Fully API-based Jira evidence uploader.
+ *
+ * No browser.
+ * No auth.json.
+ * No Playwright UI automation.
+ * No login required.
+ */
+
 import { test } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import FormData from 'form-data';
-
-dotenv.config({
-    path: path.resolve(__dirname, '../.env')
-});
+import { parse } from 'csv-parse/sync';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATHS
+// ENV
 // ─────────────────────────────────────────────────────────────────────────────
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const folderPath = process.env.TEST_DATA_PATH;
-
 const jiraBaseUrl = process.env.JIRA_BASE_URL;
-
 const jiraEmail = process.env.JIRA_EMAIL;
-
 const jiraApiToken = process.env.JIRA_API_TOKEN;
 
-const issuesFilePath = path.resolve(
-    __dirname,
-    '../issues.json'
-);
+const issuesFilePath = path.resolve(__dirname, '../issues.json');
+
+if (!jiraBaseUrl || !jiraEmail || !jiraApiToken) {
+    throw new Error(
+        'Missing Jira environment variables. Check .env file.'
+    );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AUTH
+// AUTH HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 
 const authHeader = {
-
     Authorization:
         'Basic ' +
-        Buffer.from(
-            `${jiraEmail}:${jiraApiToken}`
-        ).toString('base64'),
-
+        Buffer.from(`${jiraEmail}:${jiraApiToken}`).toString('base64'),
     Accept: 'application/json',
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOAD CSV
+// ─────────────────────────────────────────────────────────────────────────────
+
+const csvFileName = fs.readdirSync(folderPath, { withFileTypes: true })
+    .filter(f => f.isFile())
+    .map(f => f.name)
+    .find(name => name.toLowerCase().endsWith('.csv'));
+
+if (!csvFileName) {
+    throw new Error(`No CSV file found in TEST_DATA_PATH: ${folderPath}`);
+}
+
+const csvRows = parse(
+    fs.readFileSync(path.join(folderPath, csvFileName), 'utf8'),
+    {
+        columns: header => header.map(col => col.trim()),
+        skip_empty_lines: true,
+        trim: true,
+    }
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function loadIssues() {
-
+function loadIssuesBySummary() {
     if (!fs.existsSync(issuesFilePath)) {
         throw new Error(`issues.json not found: ${issuesFilePath}`);
     }
 
-    return JSON.parse(
-        fs.readFileSync(issuesFilePath, 'utf8')
-    );
+    const records = JSON.parse(fs.readFileSync(issuesFilePath, 'utf8'));
+
+    return new Map(records.map(r => [r.Summary, r]));
 }
 
-async function getIssue(issueKey) {
-
-    const response = await axios.get(
-        `${jiraBaseUrl}/rest/api/3/issue/${issueKey}`,
-        {
-            headers: authHeader,
-        }
-    );
-
-    return response.data;
-}
-
-async function attachmentAlreadyExists(
-    issueKey,
-    fileName
-) {
-
-    const issue = await getIssue(issueKey);
-
-    const attachments =
-        issue.fields?.attachment || [];
-
-    return attachments.some(
-        attachment =>
-            attachment.filename === fileName
-    );
-}
-
+/**
+ * Upload attachment to Jira issue
+ */
 async function uploadAttachment(issueKey, filePath) {
-
     const form = new FormData();
 
-    form.append(
-        'file',
-        fs.createReadStream(filePath)
-    );
+    form.append('file', fs.createReadStream(filePath));
 
-    await axios.post(
-        `${jiraBaseUrl}/rest/api/3/issue/${issueKey}/attachments`,
-        form,
-        {
-            headers: {
-                ...authHeader,
-                ...form.getHeaders(),
-                'X-Atlassian-Token': 'no-check',
-            },
-            maxBodyLength: Infinity,
-        }
-    );
+    const url = `${jiraBaseUrl}/rest/api/3/issue/${issueKey}/attachments`;
+
+    await axios.post(url, form, {
+        headers: {
+            ...authHeader,
+            ...form.getHeaders(),
+            'X-Atlassian-Token': 'no-check',
+        },
+        maxBodyLength: Infinity,
+    });
 }
 
+/**
+ * Get all transitions for an issue
+ */
 async function getTransitions(issueKey) {
+    const url = `${jiraBaseUrl}/rest/api/3/issue/${issueKey}/transitions`;
 
-    const response = await axios.get(
-        `${jiraBaseUrl}/rest/api/3/issue/${issueKey}/transitions`,
-        {
-            headers: authHeader,
-        }
-    );
+    const response = await axios.get(url, {
+        headers: authHeader,
+    });
 
     return response.data.transitions;
 }
 
-async function transitionToPass(issueKey) {
-
+/**
+ * Move issue to Pass status
+ */
+async function transitionIssueToPass(issueKey) {
     const transitions = await getTransitions(issueKey);
 
     const passTransition = transitions.find(
@@ -128,14 +127,15 @@ async function transitionToPass(issueKey) {
     );
 
     if (!passTransition) {
-
         throw new Error(
-            `No Pass transition found for ${issueKey}`
+            `No 'Pass' transition found for issue ${issueKey}`
         );
     }
 
+    const url = `${jiraBaseUrl}/rest/api/3/issue/${issueKey}/transitions`;
+
     await axios.post(
-        `${jiraBaseUrl}/rest/api/3/issue/${issueKey}/transitions`,
+        url,
         {
             transition: {
                 id: passTransition.id,
@@ -150,84 +150,62 @@ async function transitionToPass(issueKey) {
     );
 }
 
+/**
+ * Extract Jira issue key from issue URL
+ * Example:
+ * https://company.atlassian.net/browse/QA-123
+ * -> QA-123
+ */
+function extractIssueKey(issueUrl) {
+    const parts = issueUrl.split('/');
+    return parts[parts.length - 1];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TESTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe('Upload evidence via API', () => {
+test.describe('Upload evidence via Jira API', () => {
 
-    let issues = [];
+    let issuesBySummary = new Map();
 
-    // IMPORTANT:
-    // This runs AFTER previous stages complete.
     test.beforeAll(async () => {
-
-        issues = loadIssues();
+        issuesBySummary = loadIssuesBySummary();
     });
 
-    test('Upload evidence for all issues', async () => {
-        test.setTimeout(500000);
+    csvRows.forEach((row) => {
 
-        for (const issue of issues) {
+        test(`Upload evidence for ${row.Summary}`, async () => {
 
-            if (
-                issue.testStatus === 'Not Created' ||
-                !issue.issueKey
-            ) {
-                console.log(
-                    `Skipping ${issue.Summary}`
-                );
+            const issue = issuesBySummary.get(row.Summary);
 
-                continue;
+            if (!issue || issue.testStatus === 'Not Created') {
+                test.skip();
+                return;
             }
 
-            const wordFilePath = path.join(
-                folderPath,
-                `${issue.Summary}.docx`
-            );
+            const issueKey = extractIssueKey(issue.testLink);
+
+            const wordFileName = `${row.Summary}.docx`;
+            const wordFilePath = path.join(folderPath, wordFileName);
 
             if (!fs.existsSync(wordFilePath)) {
-
-                continue;
+                throw new Error(
+                    `Evidence file not found: ${wordFilePath}`
+                );
             }
 
-            //  CHECKING WHETHER THE FILE EXISTS SLOWS DOWN THE PROCESS
+            console.log(`Uploading attachment for ${issueKey}`);
 
-            // const alreadyExists =
-            //     await attachmentAlreadyExists(
-            //         issue.issueKey,
-            //         wordFilePath
-            //     );
+            // Upload evidence
+            await uploadAttachment(issueKey, wordFilePath);
 
-            // if (alreadyExists) {
+            console.log(`Transitioning ${issueKey} to Pass`);
 
-            //     console.log(
-            //         `${wordFilePath} already attached to ${issue.issueKey}`
-            //     );
+            // Set status to Pass
+            await transitionIssueToPass(issueKey);
 
-            // } else {
-
-            //     console.log(
-            //         `Uploading ${wordFilePath} to ${issue.issueKey}`
-            //     );
-
-            //     await uploadAttachment(
-            //         issue.issueKey,
-            //         wordFilePath
-            //     );
-            // }
-
-            console.log(
-                `Transitioning ${issue.issueKey} to Pass`
-            );
-
-            await transitionToPass(
-                issue.issueKey
-            );
-
-            console.log(
-                `Completed ${issue.issueKey}`
-            );
-        }
+            console.log(`Completed ${issueKey}`);
+        });
     });
 });
