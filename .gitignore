@@ -3,3 +3,5 @@ test-results/
 playwright-report/
 auth.json
 *.log
+issues.json
+link.json
