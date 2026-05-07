@@ -48,8 +48,7 @@ const authHeader = {
 function loadIssues() {
 
     if (!fs.existsSync(issuesFilePath)) {
-
-        continue;
+        throw new Error(`issues.json not found: ${issuesFilePath}`);
     }
 
     return JSON.parse(
