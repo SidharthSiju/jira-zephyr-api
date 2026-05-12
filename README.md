@@ -16,6 +16,9 @@ Automates the end-to-end workflow of bulk-importing test cases from a CSV file i
 ## Setup
 
 ### 1. CD to project directory (folder containing the tests folder)
+```bash
+cd jira-zephyr-api
+```
 
 ### 2. Install dependencies
 
@@ -23,7 +26,7 @@ Automates the end-to-end workflow of bulk-importing test cases from a CSV file i
 npm install
 ```
 
-### 4. Configure environment variables
+### 3. Configure environment variables
 
 Create a `.env` file in the project root (or edit the existing one):
 
@@ -43,9 +46,9 @@ JIRA_PROJECT_KEY=your-jira-project
 | `OUTPUT_PATH`    | Absolute path where the output results CSV will be saved          |
 | `FOLDER_NAME`    | Name of the folder (used for labelling in output)                 |
 
-### 5. Save browser authentication state
+### 4. Save browser authentication state
 
-Run the following command, log in to Jira in the browser that opens, then close it:
+Run the following command, log in to Jira in the browser that opens, press stop record, then close it:
 
 ```bash
 npx playwright codegen --save-storage=auth.json https://okducagile.atlassian.net/
