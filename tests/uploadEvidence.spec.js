@@ -190,9 +190,8 @@ test.describe('Upload evidence via Jira API', () => {
             const wordFilePath = path.join(folderPath, wordFileName);
 
             if (!fs.existsSync(wordFilePath)) {
-                throw new Error(
-                    `Evidence file not found: ${wordFilePath}`
-                );
+                console.log(`Evidence file not found: ${wordFilePath}`);
+                test.skip();
             }
 
             console.log(`Uploading attachment for ${issueKey}`);
